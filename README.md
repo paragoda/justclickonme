@@ -1,2 +1,15 @@
-# justclickonme
-Need understandable links? Because links like: https://drive.google.com/file/d/1leYgFAsa5Gwc4g59N9gbiVSGZE5i0v-B/view?usp=share_link so awful
+![justclickonme-logo](./assets/readme-header.png)
+
+# Just Click On Me
+
+Repo for api of just click on me.
+
+### Stack:
+
+- C#
+- Asp Net Core
+- Identity
+- Fly.io
+- Postgres (actually from Supabase)
+
+/api <- management api
