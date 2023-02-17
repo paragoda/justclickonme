@@ -1,6 +1,8 @@
 using Api.Db.Context;
 using Api.Db.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Builder;
+using Api.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,5 +40,19 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/", () => Results.Redirect("ui.justclickon.me"));
+
+app.MapAuth();
+
+app.MapGet("/{**slug}", async (string slug, JustClickOnMeDbContext db) =>
+{
+    var link = await db.Links.FirstOrDefaultAsync(l => l.Slug == slug);
+    if (link == null) return Results.NotFound();
+
+    if (link.ExpireTime <= DateTime.Now) return Results.NoContent();
+
+    if (link.Password != null) return Results.Redirect($"ui.justclickon.me/private/{link.Slug}");
+
+    return Results.Redirect(link.Destination);
+});
 
 app.Run();
