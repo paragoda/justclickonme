@@ -4,6 +4,6 @@ namespace Api.Db.Models
 {
     public class User : IdentityUser
     {
-        public IReadOnlyCollection<Link> Links { get; set; }
+        public IReadOnlyCollection<Link> Links { get; set; } = default!;
     }
 }
