@@ -8,34 +8,90 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Api.Helpers;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options => options.SupportNonNullableReferenceTypes());
 
-Secrets secrets = Env("ASPNETCORE_ENVIRONMENT") == "Development"
-    ? new(
-        dbConnectionString: Env("DB_CONNECTION_STRING"),
-        jwtIssuer: Env("JWT_ISSUER"),
-        jwtAudience: Env("JWT_AUDIENCE"),
-        jwtKey: Env("JWT_KEY")
-    )
-    : new(
-        dbConnectionString: builder.Configuration.GetConnectionString("DB_CONNECTION_STRING"),
-        jwtIssuer: builder.Configuration["Jwt:Issuer"],
-        jwtAudience: builder.Configuration["Jwt:Audience"],
-        jwtKey: builder.Configuration["Jwt:Key"]
-    );
+// Swagger
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "JustClickOnMe API",
+        Version = "v1",
+        Contact = new OpenApiContact
+        {
+            Name = "Flurium Team",
+            Email = "fluriumteam@gmail.com",
+            Url = new Uri("https://github.com/flurium"),
+        },
+    });
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        In = ParameterLocation.Header,
+        Description = "Please add token",
+        Name = "Auth token",
+        Type = SecuritySchemeType.Http,
+        BearerFormat = "JWT",
+        Scheme = "Bearer"
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+      {
+        new OpenApiSecurityScheme
+        {
+          Reference = new OpenApiReference
+          {
+              Type= ReferenceType.SecurityScheme,
+              Id = "Bearer"
+          },
+        }, Array.Empty<string>()
+      }
+    });
+    options.SupportNonNullableReferenceTypes();
+});
+
+Secrets secrets = new();
+if (Env("ASPNETCORE_ENVIRONMENT") == "Production")
+{
+    secrets.DbConnectionString = Env("DB_CONNECTION_STRING");
+    secrets.JwtIssuer = Env("JWT_ISSUER");
+    secrets.JwtAudience = Env("JWT_AUDIENCE");
+    secrets.JwtKey = Env("JWT_KEY");
+}
+else
+{
+    secrets.DbConnectionString = builder.Configuration.GetConnectionString("CockroachDb");
+    secrets.JwtIssuer = builder.Configuration["Jwt:Issuer"];
+    secrets.JwtAudience = builder.Configuration["Jwt:Audience"];
+    secrets.JwtKey = builder.Configuration["Jwt:Key"];
+}
+
+// DI for Secrets
+builder.Services.Configure<Secrets>(options =>
+{
+    options.DbConnectionString = secrets.DbConnectionString;
+    options.JwtIssuer = secrets.JwtIssuer;
+    options.JwtAudience = secrets.JwtAudience;
+    options.JwtKey = secrets.JwtKey;
+});
 
 // DB
 builder.Services.AddDbContext<JustClickOnMeDbContext>(options => options.UseNpgsql(secrets.DbConnectionString));
 
 // AUTH
 builder.Services.AddIdentity<User, IdentityRole>().AddEntityFrameworkStores<JustClickOnMeDbContext>().AddDefaultTokenProviders();
+
 builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
     .AddJwtBearer(options =>
     {
         options.SaveToken = true;
@@ -46,7 +102,8 @@ builder.Services
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secrets.JwtKey)),
             ValidateIssuer = true,
             ValidateAudience = true,
-            ValidateIssuerSigningKey = true
+            ValidateIssuerSigningKey = true,
+            ValidateLifetime = true
         };
     });
 
@@ -54,21 +111,26 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Always use swagger
+app.UseSwagger(options =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    options.RouteTemplate = "api/swagger/{documentname}/swagger.json";
+});
+app.UseSwaggerUI(options =>
+{
+    options.RoutePrefix = "api/swagger";
+    options.SwaggerEndpoint("/api/swagger/v1/swagger.json", "JustClickOnMe API V1");
+});
 
 app.UseHttpsRedirection();
 
+//app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
 //app.MapGet("/", () => Results.Redirect("ui.justclickon.me"));
 
-app.MapAuth(secrets);
+app.MapAuth();
 
 //app.MapGet("/{**slug}", async (string slug, JustClickOnMeDbContext db) =>
 //{

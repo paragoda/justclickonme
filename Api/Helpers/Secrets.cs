@@ -2,17 +2,9 @@
 {
     public class Secrets
     {
-        public Secrets(string dbConnectionString, string jwtIssuer, string jwtAudience, string jwtKey)
-        {
-            DbConnectionString = dbConnectionString;
-            JwtIssuer = jwtIssuer;
-            JwtAudience = jwtAudience;
-            JwtKey = jwtKey;
-        }
-
-        public string DbConnectionString { get; }
-        public string JwtIssuer { get; }
-        public string JwtAudience { get; }
-        public string JwtKey { get; }
+        public string DbConnectionString { get; set; } = string.Empty;
+        public string JwtIssuer { get; set; } = string.Empty;
+        public string JwtAudience { get; set; } = string.Empty;
+        public string JwtKey { get; set; } = string.Empty;
     }
 }
