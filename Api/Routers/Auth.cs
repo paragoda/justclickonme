@@ -1,5 +1,7 @@
-﻿using Api.Db.Models;
-using Api.Helpers;
+﻿using Api.Helpers;
+using Api.Models;
+using Api.Services;
+using Data.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -7,9 +9,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace Api.Auth;
+namespace Api.Routers;
 
-public static class AuthRouter
+public static class Auth
 {
     public static void MapAuth(this IEndpointRouteBuilder router)
     {
@@ -17,31 +19,15 @@ public static class AuthRouter
         router.MapPost("/api/auth/register", Register);
     }
 
-    private static async Task<IResult> Login(LoginInput input, UserManager<User> userManager, IOptions<Secrets> secrets)
+    private static async Task<IResult> Login(LoginInput input, UserManager<User> userManager, TokenService tokenService)
     {
         var user = await userManager.FindByEmailAsync(input.Email);
         var signed = await userManager.CheckPasswordAsync(user, input.Password);
 
         if (user == null || signed == false) return Results.Unauthorized();
 
-        var claims = new List<Claim>
-        {
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim(ClaimTypes.NameIdentifier, user.Id),
-            new Claim(ClaimTypes.Email, user.Email)
-        };
-
-        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secrets.Value.JwtKey));
-
-        var jwt = new JwtSecurityToken(
-          issuer: secrets.Value.JwtIssuer,
-          audience: secrets.Value.JwtAudience,
-          expires: DateTime.UtcNow.AddMinutes(30),
-          claims: claims,
-          signingCredentials: new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256)
-        );
-
-        return Results.Ok(new JwtSecurityTokenHandler().WriteToken(jwt));
+        var token = tokenService.GenerateAccessToken(user);
+        return Results.Ok(token);
     }
 
     private static async Task<IResult> Register(RegisterInput input, UserManager<User> userManager)

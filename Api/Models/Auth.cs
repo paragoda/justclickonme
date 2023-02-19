@@ -1,13 +1,13 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Api.Auth;
+namespace Api.Models;
 
 internal record RegisterInput(
 
     [Required(ErrorMessage = "Nickname is required")]
     string Nickname,
 
-    [EmailAddress]
+    [EmailAddress(ErrorMessage = "Input isn't email")]
     [Required(ErrorMessage = "Email is required")]
     string Email,
 
