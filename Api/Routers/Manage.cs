@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.Win32;
+using System.Security.Claims;
 
 namespace Api.Routers;
 
@@ -11,8 +12,9 @@ public static class Manage
     }
 
     [Authorize]
-    private static async Task<string> Create()
+    private static async Task<IResult> Create(ClaimsPrincipal user)
     {
-        return "yeah";
+        var id = user.FindFirstValue(claimType: ClaimTypes.NameIdentifier);
+        return Results.Ok(id);
     }
 }

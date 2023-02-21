@@ -61,6 +61,9 @@ if (Env("ASPNETCORE_ENVIRONMENT") == "Production")
     secrets.JwtIssuer = Env("JWT_ISSUER");
     //secrets.JwtAudience = Env("JWT_AUDIENCE");
     secrets.JwtKey = Env("JWT_KEY");
+
+    secrets.GoogleClientId = Env("GOOGLE_CLIENT_ID");
+    secrets.GoogleClientSecret = Env("GOOGLE_CLIENT_SECRET");
 }
 else
 {
@@ -68,6 +71,9 @@ else
     secrets.JwtIssuer = builder.Configuration["Jwt:Issuer"];
     //secrets.JwtAudience = builder.Configuration["Jwt:Audience"];
     secrets.JwtKey = builder.Configuration["Jwt:Key"];
+
+    secrets.GoogleClientId = builder.Configuration["GoogleClient:Id"];
+    secrets.GoogleClientSecret = builder.Configuration["GoogleClient:Secret"];
 }
 
 // DI for Secrets
@@ -105,10 +111,19 @@ builder.Services
             ValidateLifetime = false
         };
     });
+builder.Services.AddAuthorization();
 
 builder.Services.AddTransient<TokenService>();
 
-builder.Services.AddAuthorization();
+builder.Services.AddCors(op =>
+{
+    op.AddDefaultPolicy(ops =>
+    {
+        ops.AllowAnyOrigin()
+        .AllowAnyHeader()
+        .WithMethods("GET", "POST", "DELETE", "PUT");
+    });
+});
 
 var app = builder.Build();
 
@@ -125,7 +140,7 @@ app.UseSwaggerUI(options =>
 
 app.UseHttpsRedirection();
 
-//app.UseCors();
+app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
