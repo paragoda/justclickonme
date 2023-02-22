@@ -1,5 +1,7 @@
-﻿using Api.Helpers;
+﻿using Api.Configuration;
+using Api.Helpers;
 using Data.Models;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -28,7 +30,7 @@ public class TokenService
 
         var expiration = DateTime.UtcNow.AddMinutes(30);
 
-        return GenerateToken(claims, expiration);
+        return GenerateToken(claims, expiration, secrets.JwtAccessSecret);
     }
 
     public string GenerateRefreshToken(User user)
@@ -36,17 +38,36 @@ public class TokenService
         var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim(Constants.RefreshTokenVersion, user.RefreshTokenVersion.ToString()),
             new Claim(ClaimTypes.NameIdentifier, user.Id),
         };
 
         var expiration = DateTime.UtcNow.AddDays(30);
 
-        return GenerateToken(claims, expiration);
+        return GenerateToken(claims, expiration, secrets.JwtRefreshSecret);
     }
 
-    private string GenerateToken(List<Claim> claims, DateTime expiration)
+    public async Task<TokenValidationResult> VerifyRefreshToken(string token)
     {
-        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secrets.JwtKey));
+        var handler = new JwtSecurityTokenHandler();
+
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secrets.JwtRefreshSecret));
+
+        var validations = new TokenValidationParameters
+        {
+            ValidIssuer = secrets.JwtIssuer,
+            IssuerSigningKey = securityKey,
+            ValidateIssuer = true,
+            ValidateIssuerSigningKey = true,
+            ValidateAudience = false,
+        };
+
+        return await handler.ValidateTokenAsync(token, validations);
+    }
+
+    private string GenerateToken(List<Claim> claims, DateTime expiration, string secret)
+    {
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
         var jwt = new JwtSecurityToken(

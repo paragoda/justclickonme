@@ -1,66 +1,27 @@
+using Api.Configuration;
 using Api.Helpers;
 using Api.Routers;
 using Api.Services;
 using Data.Context;
 using Data.Models;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddEndpointsApiExplorer();
 
-// Swagger
-builder.Services.AddSwaggerGen(options =>
-{
-    options.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "JustClickOnMe API",
-        Version = "v1",
-        Contact = new OpenApiContact
-        {
-            Name = "Flurium Team",
-            Email = "fluriumteam@gmail.com",
-            Url = new Uri("https://github.com/flurium"),
-        },
-    });
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        In = ParameterLocation.Header,
-        Description = "Please add token",
-        Name = "Auth token",
-        Type = SecuritySchemeType.Http,
-        BearerFormat = "JWT",
-        Scheme = "Bearer"
-    });
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-      {
-        new OpenApiSecurityScheme
-        {
-          Reference = new OpenApiReference
-          {
-              Type= ReferenceType.SecurityScheme,
-              Id = "Bearer"
-          },
-        }, Array.Empty<string>()
-      }
-    });
-    options.SupportNonNullableReferenceTypes();
-});
+// Configure swagger
+builder.Services.ConfigureSwagger();
 
 Secrets secrets = new();
 if (Env("ASPNETCORE_ENVIRONMENT") == "Production")
 {
     secrets.DbConnectionString = Env("DB_CONNECTION_STRING");
     secrets.JwtIssuer = Env("JWT_ISSUER");
-    //secrets.JwtAudience = Env("JWT_AUDIENCE");
-    secrets.JwtKey = Env("JWT_KEY");
+    secrets.JwtAccessSecret = Env("JWT_ACCESS_SECRET");
+    secrets.JwtRefreshSecret = Env("JWT_REFRESH_SECRET");
 
     secrets.GoogleClientId = Env("GOOGLE_CLIENT_ID");
     secrets.GoogleClientSecret = Env("GOOGLE_CLIENT_SECRET");
@@ -68,9 +29,10 @@ if (Env("ASPNETCORE_ENVIRONMENT") == "Production")
 else
 {
     secrets.DbConnectionString = builder.Configuration.GetConnectionString("CockroachDb");
+
     secrets.JwtIssuer = builder.Configuration["Jwt:Issuer"];
-    //secrets.JwtAudience = builder.Configuration["Jwt:Audience"];
-    secrets.JwtKey = builder.Configuration["Jwt:Key"];
+    secrets.JwtAccessSecret = builder.Configuration["Jwt:AccessSecret"];
+    secrets.JwtRefreshSecret = builder.Configuration["Jwt:RefreshSecret"];
 
     secrets.GoogleClientId = builder.Configuration["GoogleClient:Id"];
     secrets.GoogleClientSecret = builder.Configuration["GoogleClient:Secret"];
@@ -80,63 +42,40 @@ else
 builder.Services.Configure<Secrets>(options =>
 {
     options.DbConnectionString = secrets.DbConnectionString;
+
     options.JwtIssuer = secrets.JwtIssuer;
-    //options.JwtAudience = secrets.JwtAudience;
-    options.JwtKey = secrets.JwtKey;
+    options.JwtAccessSecret = secrets.JwtAccessSecret;
+    options.JwtRefreshSecret = secrets.JwtRefreshSecret;
+
+    options.GoogleClientId = secrets.GoogleClientId;
+    options.GoogleClientSecret = secrets.GoogleClientSecret;
 });
 
-// DB
+// Db
 builder.Services.AddDbContext<JustClickOnMeDbContext>(options => options.UseNpgsql(secrets.DbConnectionString));
 
-// AUTH
+// Auth
 builder.Services.AddIdentity<User, IdentityRole>().AddEntityFrameworkStores<JustClickOnMeDbContext>().AddDefaultTokenProviders();
-
-builder.Services
-    .AddAuthentication(options =>
-    {
-        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-    })
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidIssuer = secrets.JwtIssuer,
-            //ValidAudience = secrets.JwtAudience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secrets.JwtKey)),
-            ValidateIssuer = true,
-            ValidateAudience = false,
-            ValidateIssuerSigningKey = true,
-            ValidateLifetime = false
-        };
-    });
+builder.Services.AddJwtAuthentication(secrets);
 builder.Services.AddAuthorization();
 
 builder.Services.AddTransient<TokenService>();
 
-builder.Services.AddCors(op =>
+builder.Services.AddCors(options =>
 {
-    op.AddDefaultPolicy(ops =>
+    options.AddDefaultPolicy(policy =>
     {
-        ops.AllowAnyOrigin()
-        .AllowAnyHeader()
-        .WithMethods("GET", "POST", "DELETE", "PUT");
+        policy
+            .AllowAnyOrigin()
+            .AllowAnyHeader()
+            .WithMethods("GET", "POST", "DELETE", "PUT");
     });
 });
 
 var app = builder.Build();
 
-// Always use swagger
-app.UseSwagger(options =>
-{
-    options.RouteTemplate = "api/swagger/{documentname}/swagger.json";
-});
-app.UseSwaggerUI(options =>
-{
-    options.RoutePrefix = "api/swagger";
-    options.SwaggerEndpoint("/api/swagger/v1/swagger.json", "JustClickOnMe API V1");
-});
+// Use swagger
+app.UseJustClickOnMeSwagger();
 
 app.UseHttpsRedirection();
 

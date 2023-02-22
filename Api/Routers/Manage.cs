@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Api.Models;
+using Data.Context;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Win32;
 using System.Security.Claims;
 
@@ -8,13 +10,26 @@ public static class Manage
 {
     public static void MapManage(this IEndpointRouteBuilder router)
     {
-        router.MapGet("/api/manage/create", Create);
+        router.MapPost("/api/manage", Create);
     }
 
     [Authorize]
-    private static async Task<IResult> Create(ClaimsPrincipal user)
+    private static async Task<IResult> Create(CreateLinkInput input, ClaimsPrincipal user, JustClickOnMeDbContext db)
     {
-        var id = user.FindFirstValue(claimType: ClaimTypes.NameIdentifier);
-        return Results.Ok(id);
+        var uid = user.FindFirstValue(claimType: ClaimTypes.NameIdentifier);
+
+        if (uid == null) return Results.Unauthorized();
+
+        try
+        {
+            var res = await db.Links.AddAsync(new Data.Models.Link(input.Slug, input.Destination, uid));
+            await db.SaveChangesAsync();
+
+            return Results.Ok();
+        }
+        catch
+        {
+            return Results.Problem();
+        }
     }
 }
