@@ -1,6 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-
-namespace Api.Helpers
+﻿namespace Api.Helpers
 {
     public class Secrets
     {

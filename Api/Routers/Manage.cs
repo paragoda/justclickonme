@@ -1,7 +1,6 @@
 ﻿using Api.Models;
 using Data.Context;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.Win32;
 using System.Security.Claims;
 
 namespace Api.Routers;

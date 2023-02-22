@@ -1,5 +1,4 @@
 ﻿using Microsoft.OpenApi.Models;
-using Microsoft.Win32;
 
 namespace Api.Configuration;
 
