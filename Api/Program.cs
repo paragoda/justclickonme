@@ -1,14 +1,14 @@
-using Api.Db.Context;
-using Api.Db.Models;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Builder;
-using Api.Auth;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using Api.Helpers;
+using Api.Routers;
+using Api.Services;
+using Data.Context;
+using Data.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -59,15 +59,21 @@ if (Env("ASPNETCORE_ENVIRONMENT") == "Production")
 {
     secrets.DbConnectionString = Env("DB_CONNECTION_STRING");
     secrets.JwtIssuer = Env("JWT_ISSUER");
-    secrets.JwtAudience = Env("JWT_AUDIENCE");
+    //secrets.JwtAudience = Env("JWT_AUDIENCE");
     secrets.JwtKey = Env("JWT_KEY");
+
+    secrets.GoogleClientId = Env("GOOGLE_CLIENT_ID");
+    secrets.GoogleClientSecret = Env("GOOGLE_CLIENT_SECRET");
 }
 else
 {
     secrets.DbConnectionString = builder.Configuration.GetConnectionString("CockroachDb");
     secrets.JwtIssuer = builder.Configuration["Jwt:Issuer"];
-    secrets.JwtAudience = builder.Configuration["Jwt:Audience"];
+    //secrets.JwtAudience = builder.Configuration["Jwt:Audience"];
     secrets.JwtKey = builder.Configuration["Jwt:Key"];
+
+    secrets.GoogleClientId = builder.Configuration["GoogleClient:Id"];
+    secrets.GoogleClientSecret = builder.Configuration["GoogleClient:Secret"];
 }
 
 // DI for Secrets
@@ -75,7 +81,7 @@ builder.Services.Configure<Secrets>(options =>
 {
     options.DbConnectionString = secrets.DbConnectionString;
     options.JwtIssuer = secrets.JwtIssuer;
-    options.JwtAudience = secrets.JwtAudience;
+    //options.JwtAudience = secrets.JwtAudience;
     options.JwtKey = secrets.JwtKey;
 });
 
@@ -94,20 +100,30 @@ builder.Services
     })
     .AddJwtBearer(options =>
     {
-        options.SaveToken = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidIssuer = secrets.JwtIssuer,
-            ValidAudience = secrets.JwtAudience,
+            //ValidAudience = secrets.JwtAudience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secrets.JwtKey)),
             ValidateIssuer = true,
-            ValidateAudience = true,
+            ValidateAudience = false,
             ValidateIssuerSigningKey = true,
-            ValidateLifetime = true
+            ValidateLifetime = false
         };
     });
-
 builder.Services.AddAuthorization();
+
+builder.Services.AddTransient<TokenService>();
+
+builder.Services.AddCors(op =>
+{
+    op.AddDefaultPolicy(ops =>
+    {
+        ops.AllowAnyOrigin()
+        .AllowAnyHeader()
+        .WithMethods("GET", "POST", "DELETE", "PUT");
+    });
+});
 
 var app = builder.Build();
 
@@ -124,13 +140,15 @@ app.UseSwaggerUI(options =>
 
 app.UseHttpsRedirection();
 
-//app.UseCors();
+app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
 //app.MapGet("/", () => Results.Redirect("ui.justclickon.me"));
 
+// Map api routers
 app.MapAuth();
+app.MapManage();
 
 //app.MapGet("/{**slug}", async (string slug, JustClickOnMeDbContext db) =>
 //{

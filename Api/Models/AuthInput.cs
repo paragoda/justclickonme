@@ -1,14 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using System.Diagnostics.CodeAnalysis;
 
-namespace Api.Auth;
+namespace Api.Models;
 
 internal record RegisterInput(
 
-    [Required(ErrorMessage = "Nickname is required")]
-    string Nickname,
-
-    [EmailAddress]
+    [EmailAddress(ErrorMessage = "Input isn't email")]
     [Required(ErrorMessage = "Email is required")]
     string Email,
 
@@ -26,4 +22,9 @@ internal record LoginInput(
 
     [Required(ErrorMessage = "Password is required")]
     string Password
+);
+internal record GoogleInput(
+
+    [Required(ErrorMessage = "IdToken is required")]
+    string IdToken
 );
