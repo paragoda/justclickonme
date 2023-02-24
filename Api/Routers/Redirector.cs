@@ -1,7 +1,6 @@
 ﻿using Api.Configuration;
 using Data.Context;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Win32;
 
 namespace Api.Routers;
 

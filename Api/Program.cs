@@ -88,7 +88,6 @@ app.MapAuth();
 app.MapLinks();
 app.MapRedirector();
 
-
 app.Run();
 
 static string Env(string variable) => Environment.GetEnvironmentVariable(variable) ?? "";
