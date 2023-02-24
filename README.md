@@ -10,6 +10,8 @@ Repo for api of just click on me.
 - Asp Net Core
 - Identity
 - Fly.io
-- Postgres (actually from Supabase)
+- CockroachDb (Postgres like)
 
+/ <- redirect to frontend
+/[path] <- redirects  
 /api <- management api

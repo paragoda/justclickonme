@@ -9,11 +9,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Data.Context.Migrations
+namespace Data.Migrations
 {
     [DbContext(typeof(JustClickOnMeDbContext))]
-    [Migration("20230219074726_Reinit")]
-    partial class Reinit
+    [Migration("20230222092254_ReinitDb")]
+    partial class ReinitDb
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -85,6 +85,9 @@ namespace Data.Context.Migrations
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("boolean");
+
+                    b.Property<int>("RefreshTokenVersion")
+                        .HasColumnType("integer");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");

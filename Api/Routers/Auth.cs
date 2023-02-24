@@ -1,14 +1,11 @@
-﻿using Api.Helpers;
+﻿using Api.Configuration;
 using Api.Models;
 using Api.Services;
+using Data.Context;
 using Data.Models;
 using Google.Apis.Auth;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 
 namespace Api.Routers;
 
@@ -18,7 +15,11 @@ public static class Auth
     {
         router.MapPost("/api/auth/login", Login);
         router.MapPost("/api/auth/register", Register);
-        router.MapPost("/api/auth/google", Google);
+        router.MapPost("/api/auth/google", Google).RequireHost("localhost");
+        router.MapGet("/api/auth/refresh", Refresh);
+
+        // now for testing
+        router.MapPost("/api/auth/revoke", Revoke);
     }
 
     private static async Task<IResult> Login(LoginInput input, UserManager<User> userManager, TokenService tokenService, HttpResponse res)
@@ -32,7 +33,8 @@ public static class Auth
         if (signed == false) return Results.Unauthorized();
 
         var token = tokenService.GenerateAccessToken(user);
-        res.Cookies.Append("fresh", tokenService.GenerateRefreshToken(user), new() { HttpOnly = true });
+        res.Cookies.Append(Constants.RefreshTokenCookie, tokenService.GenerateRefreshToken(user), new() { HttpOnly = true });
+
         return Results.Ok(token);
     }
 
@@ -81,12 +83,59 @@ public static class Auth
             }
 
             var token = tokenService.GenerateAccessToken(user);
-            response.Cookies.Append("fresh", tokenService.GenerateRefreshToken(user), new() { HttpOnly = true });
+            response.Cookies.Append(Constants.RefreshTokenCookie, tokenService.GenerateRefreshToken(user), new() { HttpOnly = true });
             return Results.Ok(token);
         }
         catch
         {
             return Results.BadRequest();
         }
+    }
+
+    private static async Task<IResult> Refresh(HttpRequest request, TokenService tokenService, UserManager<User> userManager, HttpResponse response)
+    {
+        try
+        {
+            var refreshToken = request.Cookies[Constants.RefreshTokenCookie];
+            if (refreshToken == null) return Results.BadRequest();
+
+            var tokenValidation = await tokenService.VerifyRefreshToken(refreshToken);
+            if (!tokenValidation.IsValid) return Results.BadRequest();
+
+            var uid = tokenValidation.ClaimsIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (uid == null) return Results.BadRequest();
+
+            var user = await userManager.FindByIdAsync(uid);
+            if (user == null) return Results.NotFound();
+
+            var refreshClaim = tokenValidation.ClaimsIdentity.FindFirst(Constants.RefreshTokenVersion);
+            if (refreshClaim == null) return Results.BadRequest();
+
+            var refreshTokenVersion = int.Parse(refreshClaim.Value);
+
+            if (user.RefreshTokenVersion != refreshTokenVersion) return Results.Unauthorized();
+
+            var accessToken = tokenService.GenerateAccessToken(user);
+            response.Cookies.Append(Constants.RefreshTokenCookie, tokenService.GenerateRefreshToken(user), new() { HttpOnly = true });
+            return Results.Ok(accessToken);
+        }
+        catch
+        {
+            return Results.BadRequest();
+        }
+    }
+
+    private static async Task<IResult> Revoke(ClaimsPrincipal claims, JustClickOnMeDbContext db)
+    {
+        var uid = claims.FindFirstValue(claimType: ClaimTypes.NameIdentifier);
+        if (uid == null) return Results.NotFound();
+
+        var user = db.Users.FirstOrDefault(u => u.Id == uid);
+        if (user == null) return Results.NotFound();
+
+        user.RefreshTokenVersion += 1;
+        await db.SaveChangesAsync();
+
+        return Results.Ok();
     }
 }

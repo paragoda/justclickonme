@@ -8,7 +8,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Data.Context.Migrations
+namespace Data.Migrations
 {
     [DbContext(typeof(JustClickOnMeDbContext))]
     partial class JustClickOnMeDbContextModelSnapshot : ModelSnapshot
@@ -83,6 +83,9 @@ namespace Data.Context.Migrations
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("boolean");
+
+                    b.Property<int>("RefreshTokenVersion")
+                        .HasColumnType("integer");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
