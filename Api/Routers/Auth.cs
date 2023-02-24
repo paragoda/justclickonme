@@ -15,8 +15,8 @@ public static class Auth
     {
         router.MapPost("/api/auth/login", Login);
         router.MapPost("/api/auth/register", Register);
-        router.MapPost("/api/auth/google", Google);
-        router.MapPost("/api/auth/refresh", Refresh);
+        router.MapPost("/api/auth/google", Google).RequireHost("localhost");
+        router.MapGet("/api/auth/refresh", Refresh);
 
         // now for testing
         router.MapPost("/api/auth/revoke", Revoke);
@@ -97,19 +97,18 @@ public static class Auth
         try
         {
             var refreshToken = request.Cookies[Constants.RefreshTokenCookie];
-
             if (refreshToken == null) return Results.BadRequest();
 
-            var res = await tokenService.VerifyRefreshToken(refreshToken);
-            if (!res.IsValid) return Results.BadRequest();
+            var tokenValidation = await tokenService.VerifyRefreshToken(refreshToken);
+            if (!tokenValidation.IsValid) return Results.BadRequest();
 
-            var uid = res.ClaimsIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var uid = tokenValidation.ClaimsIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (uid == null) return Results.BadRequest();
 
             var user = await userManager.FindByIdAsync(uid);
             if (user == null) return Results.NotFound();
 
-            var refreshClaim = res.ClaimsIdentity.FindFirst(Constants.RefreshTokenVersion);
+            var refreshClaim = tokenValidation.ClaimsIdentity.FindFirst(Constants.RefreshTokenVersion);
             if (refreshClaim == null) return Results.BadRequest();
 
             var refreshTokenVersion = int.Parse(refreshClaim.Value);

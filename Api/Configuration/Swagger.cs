@@ -45,7 +45,7 @@ public static class Swagger
         });
     }
 
-    public static void UseJustClickOnMeSwagger(this IApplicationBuilder app)
+    public static void UseJustClickOnMeSwagger<TBuilder>(this TBuilder app) where TBuilder : IEndpointRouteBuilder, IApplicationBuilder
     {
         app.UseSwagger(options =>
         {
@@ -56,5 +56,6 @@ public static class Swagger
             options.RoutePrefix = "api/swagger";
             options.SwaggerEndpoint("/api/swagger/v1/swagger.json", "JustClickOnMe API V1");
         });
+        app.MapSwagger();
     }
 }

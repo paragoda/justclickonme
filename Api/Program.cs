@@ -83,23 +83,11 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
-//app.MapGet("/", () => Results.Redirect("ui.justclickon.me"));
-
-// Map api routers
+// Map Routers
 app.MapAuth();
-app.MapManage();
+app.MapLinks();
+app.MapRedirector();
 
-//app.MapGet("/{**slug}", async (string slug, JustClickOnMeDbContext db) =>
-//{
-//    var link = await db.Links.FirstOrDefaultAsync(l => l.Slug == slug);
-//    if (link == null) return Results.NotFound();
-
-//    if (link.ExpireTime <= DateTime.Now) return Results.NoContent();
-
-//    if (link.Password != null) return Results.Redirect($"ui.justclickon.me/private/{link.Slug}");
-
-//    return Results.Redirect(link.Destination);
-//});
 
 app.Run();
 
