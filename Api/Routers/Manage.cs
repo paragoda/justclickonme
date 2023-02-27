@@ -12,6 +12,9 @@ public static class Manage
         router.MapGet("/api/links", All).RequireAuthorization();
         router.MapGet("/api/links/{slug:required}", One).RequireAuthorization();
         router.MapPost("/api/links", Create).RequireAuthorization();
+
+        router.MapGet("/api/links/{slug:required}", Delete).RequireAuthorization();
+        router.MapPost("/api/links/{slug:required}", Update).RequireAuthorization();
     }
 
     private static async Task<IResult> All(ClaimsPrincipal user, JustClickOnMeDbContext db)
@@ -40,7 +43,7 @@ public static class Manage
     private static async Task<IResult> Create(CreateLinkInput input, ClaimsPrincipal user, JustClickOnMeDbContext db)
     {
         var uid = user.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (uid == null) return Results.Unauthorized();
+        if (uid == null) return Results.Unauthorized();             //why don't we use [Authorize] filter ???
 
         try
         {
@@ -56,6 +59,59 @@ public static class Manage
             //var res = await db.Links.AddAsync(new Data.Models.Link(input.Slug, input.Destination, uid));
             //await db.SaveChangesAsync();
 
+            return Results.Ok();
+        }
+        catch
+        {
+            return Results.Problem();
+        }
+    }
+
+    private static async Task<IResult> Delete(string slug, JustClickOnMeDbContext db)
+    {
+        try
+        {
+            var entity = await db.Links.FirstAsync(x => x.Slug == slug);
+            if (entity != null) db.Links.Remove(entity);
+            else return Results.BadRequest();
+            await db.SaveChangesAsync();
+
+            return Results.Ok();
+        }
+        catch
+        {
+            return Results.Problem();
+        }
+    }
+
+    private static async Task<IResult> Update(string slug, string slug_new, /*string destination,*/ JustClickOnMeDbContext db)
+    {
+        try
+        {
+            var entity = await db.Links.FirstAsync(x => x.Slug == slug);
+            if (entity != null)
+            {
+                entity.Slug = slug_new;
+                //entity.Destination = destination;
+                db.Entry(entity).State = EntityState.Modified;
+            }
+            else return Results.BadRequest();
+
+            await db.SaveChangesAsync();
+
+            return Results.Ok();
+        }
+        catch
+        {
+            return Results.Problem();
+        }
+    }
+
+    //What does it mean "Upsert" ??? (Update?/Insert?)
+    private static async Task<IResult> Upsert()
+    {
+        try
+        {          
             return Results.Ok();
         }
         catch
