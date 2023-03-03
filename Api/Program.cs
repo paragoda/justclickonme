@@ -63,12 +63,22 @@ builder.Services.AddTransient<TokenService>();
 
 builder.Services.AddCors(options =>
 {
+    //options.AddDefaultPolicy(policy =>
+    //{
+    //    policy
+    //        .AllowAnyOrigin()
+    //        .AllowAnyHeader()
+    //        .WithMethods("GET", "POST", "DELETE", "PUT");
+    //});
+
     options.AddDefaultPolicy(policy =>
     {
         policy
-            .AllowAnyOrigin()
-            .AllowAnyHeader()
-            .WithMethods("GET", "POST", "DELETE", "PUT");
+        .WithOrigins("https://localhost:44350/")
+            .SetIsOriginAllowed(origin => true)
+            .AllowCredentials()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
     });
 });
 
@@ -77,13 +87,18 @@ var app = builder.Build();
 // Use swagger
 app.UseJustClickOnMeSwagger();
 
-app.UseHttpsRedirection();
+if (Env("ASPNETCORE_ENVIRONMENT") == "Production")
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
 // Map Routers
+app.MapGet("/", () => Results.Redirect("https://app.justclickon.me"));
+
 app.MapAuth();
 app.MapLinks();
 app.MapRedirector();

@@ -9,20 +9,30 @@ using System.Security.Claims;
 
 namespace Api.Routers;
 
-public static class Auth
+public static class AuthRouter
 {
     public static void MapAuth(this IEndpointRouteBuilder router)
     {
         router.MapPost("/api/auth/login", Login);
         router.MapPost("/api/auth/register", Register);
-        router.MapPost("/api/auth/google", Google).RequireHost("localhost");
+        router.MapPost("/api/auth/google", Google);
         router.MapGet("/api/auth/refresh", Refresh);
 
         // now for testing
         router.MapPost("/api/auth/revoke", Revoke);
     }
 
-    private static async Task<IResult> Login(LoginInput input, UserManager<User> userManager, TokenService tokenService, HttpResponse res)
+    private static void SetCookie(HttpResponse response, string key, string value)
+    {
+        response.Cookies.Append(key, value, new()
+        {
+            HttpOnly = true,
+            SameSite = SameSiteMode.None,
+            Secure = true
+        });
+    }
+
+    private static async Task<IResult> Login(LoginInput input, UserManager<User> userManager, TokenService tokenService, HttpResponse response)
     {
         var user = await userManager.FindByEmailAsync(input.Email);
         // If password hash == null, that means user signed in with google, etc.
@@ -33,9 +43,12 @@ public static class Auth
         if (signed == false) return Results.Unauthorized();
 
         var token = tokenService.GenerateAccessToken(user);
-        res.Cookies.Append(Constants.RefreshTokenCookie, tokenService.GenerateRefreshToken(user), new() { HttpOnly = true });
+        SetCookie(response, Constants.RefreshTokenCookie, tokenService.GenerateRefreshToken(user));
 
-        return Results.Ok(token);
+        return Results.Ok(new
+        {
+            accessToken = token
+        });
     }
 
     private static async Task<IResult> Register(RegisterInput input, UserManager<User> userManager)
@@ -83,8 +96,11 @@ public static class Auth
             }
 
             var token = tokenService.GenerateAccessToken(user);
-            response.Cookies.Append(Constants.RefreshTokenCookie, tokenService.GenerateRefreshToken(user), new() { HttpOnly = true });
-            return Results.Ok(token);
+            SetCookie(response, Constants.RefreshTokenCookie, tokenService.GenerateRefreshToken(user));
+            return Results.Ok(new
+            {
+                accessToken = token
+            });
         }
         catch
         {
@@ -116,8 +132,11 @@ public static class Auth
             if (user.RefreshTokenVersion != refreshTokenVersion) return Results.Unauthorized();
 
             var accessToken = tokenService.GenerateAccessToken(user);
-            response.Cookies.Append(Constants.RefreshTokenCookie, tokenService.GenerateRefreshToken(user), new() { HttpOnly = true });
-            return Results.Ok(accessToken);
+            SetCookie(response, Constants.RefreshTokenCookie, tokenService.GenerateRefreshToken(user));
+            return Results.Ok(new
+            {
+                accessToken
+            });
         }
         catch
         {

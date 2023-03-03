@@ -1,10 +1,9 @@
-﻿using Api.Configuration;
-using Data.Context;
+﻿using Data.Context;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Routers;
 
-public static class Redirector
+public static class RedirectRouter
 {
     public static void MapRedirector(this IEndpointRouteBuilder router)
     {
@@ -15,7 +14,7 @@ public static class Redirector
     {
         var link = await db.Links.FirstOrDefaultAsync(l => l.Slug == slug);
 
-        if (link == null) return Results.Redirect(Constants.NotFoundPage);
+        if (link == null) return Results.Redirect("https://feature-sliced.design/"); //(Constants.NotFoundPage);
 
         var url = link.Destination;
 

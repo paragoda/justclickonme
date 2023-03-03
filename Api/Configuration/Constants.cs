@@ -6,5 +6,7 @@
         public const string RefreshTokenVersion = "refreshTokenVersion";
 
         public const string NotFoundPage = "https://www.justclickon.me/not-found";
+
+        public const string CredentialsCors = "CredentialsCors";
     }
 }

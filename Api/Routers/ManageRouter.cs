@@ -5,7 +5,7 @@ using System.Security.Claims;
 
 namespace Api.Routers;
 
-public static class Manage
+public static class ManageRouter
 {
     public static void MapLinks(this IEndpointRouteBuilder router)
     {

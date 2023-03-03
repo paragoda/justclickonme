@@ -53,9 +53,19 @@ public static class Swagger
         });
         app.UseSwaggerUI(options =>
         {
-            options.RoutePrefix = "api/swagger";
+            string swaggerVersion = "4.15.5";
+            string pkgUrl = "https://unpkg.com/swagger-ui-dist@";
+            options.HeadContent =
+                $"<link rel=\"stylesheet\" type=\"text/css\" " +
+                $"href=\"{pkgUrl}{swaggerVersion}/swagger-ui.css\" />";
+            options.InjectStylesheet($"{pkgUrl}{swaggerVersion}/swagger-ui.css", "text/css");
+            options.InjectJavascript($"{pkgUrl}{swaggerVersion}/swagger-ui-standalone-preset.js", "text/javascript");
+            options.InjectJavascript($"{pkgUrl}{swaggerVersion}/swagger-ui-bundle.js", "text/javascript");
+
             options.SwaggerEndpoint("/api/swagger/v1/swagger.json", "JustClickOnMe API V1");
+            options.RoutePrefix = "api/swagger";
         });
+
         app.MapSwagger();
     }
 }
